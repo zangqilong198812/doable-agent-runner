@@ -17,7 +17,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Rethinking-studio/doable-agent-runner.git"
+    "url": "git+https://github.com/zangqilong198812/doable-agent-runner.git"
   },
   "keywords": [
     "mcp",
@@ -30,6 +30,6 @@
   },
   "homepage": "https://doable.rethinking.art",
   "bugs": {
-    "url": "https://github.com/Rethinking-studio/doable-agent-runner/issues"
+    "url": "https://github.com/zangqilong198812/doable-agent-runner/issues"
   }
 }

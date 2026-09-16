@@ -8,7 +8,7 @@
 # unattended agent sessions on other people's machines.
 #
 # One-time setup on npmjs.com, under the package's Settings → Trusted Publisher:
-#   Organization: Rethinking-studio
+#   Organization: zangqilong198812
 #   Repository:   doable-agent-runner
 #   Workflow:     publish.yml
 #
