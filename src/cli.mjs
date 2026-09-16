@@ -10,7 +10,7 @@
 
 import { spawnSync } from "node:child_process";
 import { writeFileSync, unlinkSync, existsSync, mkdirSync, cpSync, rmSync } from "node:fs";
-import { homedir, hostname, platform } from "node:os";
+import { homedir, hostname, platform, userInfo } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as config from "./config.mjs";
@@ -63,6 +63,7 @@ function install() {
   };
 
   const path = config.save(settings);
+  checkAgentIsReachable(settings);
   const runtime = installRuntime();
   console.log(`Settings written to ${path}`);
   console.log(`Machine name: ${settings.name}`);
@@ -74,6 +75,33 @@ function install() {
   );
 
   platform() === "darwin" ? installLaunchd(runtime) : installSystemd(runtime);
+}
+
+/// launchd and systemd hand a process a minimal PATH, while agent CLIs install
+/// into ~/.local/bin or a homebrew or nvm prefix. The runner starts them under a
+/// login shell for exactly that reason — but if the command still cannot be
+/// found, it is far better to say so now than to fail at 1am with nobody
+/// watching and nothing in the log but "command not found".
+function checkAgentIsReachable(settings) {
+  const command = settings.exec || "claude";
+  const binary = command.trim().split(/\s+/)[0];
+  const shell = (() => {
+    try {
+      return userInfo().shell || "/bin/zsh";
+    } catch {
+      return "/bin/zsh";
+    }
+  })();
+  const found = spawnSync(shell, ["-lc", `command -v ${binary}`], { encoding: "utf8" });
+  if (found.status === 0 && found.stdout.trim()) {
+    console.log(`Will start: ${found.stdout.trim()}`);
+  } else {
+    console.log(
+      `\nWARNING: could not find \`${binary}\` in your login shell.\n` +
+        "The runner will install, but every session it starts will fail. Either install\n" +
+        "that command, or re-run with --exec pointing at the right one."
+    );
+  }
 }
 
 /// Copies the runner somewhere stable and returns the entry point to point the

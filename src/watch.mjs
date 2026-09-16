@@ -18,6 +18,7 @@
 // Settings come from ~/.doable/runner.json, written by `install`.
 
 import { spawn } from "node:child_process";
+import { userInfo } from "node:os";
 import * as config from "./config.mjs";
 
 const settings = config.load();
@@ -51,6 +52,17 @@ if (!token) {
 
 const log = (...a) => console.log(new Date().toISOString(), ...a);
 
+/// The user's own shell, so their profile — and the PATH it builds — applies.
+/// Read from the password database rather than $SHELL, which launchd does not
+/// set.
+function loginShell() {
+  try {
+    return userInfo().shell || process.env.SHELL || "/bin/zsh";
+  } catch {
+    return process.env.SHELL || "/bin/zsh";
+  }
+}
+
 /// True while a session is running. The desk allows one job per machine anyway,
 /// so starting a second session would only produce an agent that gets refused.
 let busy = false;
@@ -59,10 +71,18 @@ function runSession() {
   if (busy) return;
   busy = true;
   log("work on the desk — starting a session");
-  // Through a shell so `--exec` can be whatever the user's agent needs. The
-  // prompt is handed over twice — on stdin and in the environment — because
-  // CLIs disagree about which they prefer, and neither way needs quoting.
-  const child = spawn("/bin/sh", ["-c", exec], {
+  // A LOGIN shell, not a plain one. launchd and systemd hand a process a
+  // minimal PATH — /usr/bin:/bin and little else — while agent CLIs install
+  // into ~/.local/bin, a homebrew prefix, or an nvm directory. Running under
+  // the user's own shell profile is what makes `claude` resolvable at all;
+  // without it this fails with "command not found" long after anyone is
+  // watching.
+  //
+  // `--exec` stays a plain shell command so it can be whatever the user's
+  // agent needs, and the prompt is handed over twice — on stdin and in the
+  // environment — because CLIs disagree about which they prefer and neither
+  // way needs quoting.
+  const child = spawn(loginShell(), ["-lc", exec], {
     cwd,
     env: { ...process.env, DOABLE_PROMPT: PROMPT },
     stdio: ["pipe", "inherit", "inherit"],
