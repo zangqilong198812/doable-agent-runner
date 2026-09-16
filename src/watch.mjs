@@ -95,6 +95,10 @@ async function announce() {
 }
 
 let version = "";
+/// Successful long polls are silent on purpose — one line every 25 seconds
+/// would bury everything worth reading. But that makes an outage and a hang
+/// look identical in the log, so recovery gets said out loud.
+let failing = false;
 
 async function watch() {
   for (;;) {
@@ -113,6 +117,11 @@ async function watch() {
         continue;
       }
 
+      if (failing) {
+        log("reconnected");
+        failing = false;
+      }
+
       const event = await res.json();
       version = event.version;
 
@@ -124,7 +133,8 @@ async function watch() {
       else log("desk changed but nothing is queued");
     } catch (e) {
       // Sleep, laptop lid, flaky wifi — none of these deserve a crash.
-      log("watch failed:", e.message, "— retrying in 15s");
+      if (!failing) log("watch failed:", e.message, "— retrying every 15s until it comes back");
+      failing = true;
       await sleep(15_000);
     }
   }
