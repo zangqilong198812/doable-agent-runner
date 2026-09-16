@@ -1,0 +1,71 @@
+# Publishes to npm on a GitHub release, using npm's trusted publishing.
+#
+# No NPM_TOKEN and no one-time password: npm verifies an OIDC token minted by
+# GitHub for this specific repository and workflow, so the right to publish
+# belongs to the workflow rather than to a secret someone has to hold. It also
+# attaches provenance — a signed statement that this tarball was built from this
+# commit in this repository, which is worth having for something that starts
+# unattended agent sessions on other people's machines.
+#
+# One-time setup on npmjs.com, under the package's Settings → Trusted Publisher:
+#   Organization: Rethinking-studio
+#   Repository:   doable-agent-runner
+#   Workflow:     publish.yml
+#
+# The package has to exist before that page does, so 0.1.0 is published by hand.
+
+name: Publish
+
+on:
+  release:
+    types: [published]
+  # Lets you rehearse the whole job without publishing.
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Pack and check, do not publish"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write # mints the OIDC token npm checks
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+
+      # Trusted publishing needs npm 11.5.1 or newer; the bundled version
+      # trails that on most runner images.
+      - run: npm install -g npm@latest
+
+      - name: Check the package parses and runs
+        run: |
+          node --check src/cli.mjs
+          node --check src/watch.mjs
+          node --check src/config.mjs
+          node src/cli.mjs status
+
+      - name: Refuse to publish a version that does not match the tag
+        if: github.event_name == 'release'
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "Tag $tag and package.json $pkg disagree. Publishing either would be a lie."
+            exit 1
+          fi
+
+      - run: npm publish --dry-run
+        if: github.event_name == 'workflow_dispatch' && inputs.dry_run
+
+      - run: npm publish
+        if: github.event_name == 'release' || !inputs.dry_run
