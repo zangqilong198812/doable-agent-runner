@@ -1,0 +1,35 @@
+{
+  "name": "@rethinkingstudio/agent-runner",
+  "version": "0.1.0",
+  "description": "Starts your coding agent when a job lands on your Doable Agent Desk.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "doable-agent-runner": "src/cli.mjs"
+  },
+  "files": [
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rethinking-studio/doable-agent-runner.git"
+  },
+  "keywords": [
+    "mcp",
+    "agent",
+    "claude",
+    "doable"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "homepage": "https://doable.rethinking.art",
+  "bugs": {
+    "url": "https://github.com/Rethinking-studio/doable-agent-runner/issues"
+  }
+}
